@@ -1,0 +1,8 @@
+
+.vs/
+
+GraphCut/x64/
+
+*.exe
+
+*.pdb
