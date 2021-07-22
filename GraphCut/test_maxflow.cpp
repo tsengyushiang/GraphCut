@@ -1,4 +1,4 @@
-﻿
+
 #include <iostream>
 #include "maxflow.h"
 #include <opencv2/opencv.hpp>
@@ -114,13 +114,23 @@ vector<vector<int>> findOverlap(Mat imgL,Mat imgR) {
     }
     
     Mat mask_L(h, w, CV_8UC1, Scalar(0, 0, 0));
+    Mat mask_R(h, w, CV_8UC1, Scalar(0, 0, 0));
+    Mat mask_overlap(h, w, CV_8UC1, Scalar(0, 0, 0));
     for (int y = 0; y < h; y++) {
         for (int x = 0; x < w; x++) {
-            if (overlap_region[y][x] == 1)
+            if (overlap_region[y][x] == 1) {
                 mask_L.at<uchar>(y, x) = 255;
+            }
+            else if (overlap_region[y][x] == 2) {
+                mask_R.at<uchar>(y, x) = 255;
+            }else if (overlap_region[y][x] == 3) {
+                mask_overlap.at<uchar>(y, x) = 255;
+            }
         }
     }
-    imwrite("./result/debug_L.jpg",mask_L);
+    imwrite("./result/mask_L.jpg",mask_L);
+    imwrite("./result/mask_R.jpg",mask_R);
+    imwrite("./result/mask_overlap.jpg", mask_overlap);
 
     return overlap_region;
 }
@@ -307,23 +317,30 @@ int main()
     //erode(mask, mask, element);
 
 
-    imwrite("./result/mask.png", mask);
+    //imwrite("./result/mask.png", mask);
     Mat overlap_result(overlap_height, overlap_width, CV_8UC4, Scalar(0, 0, 0));
     Mat overlap_result_seam(overlap_height, overlap_width, CV_8UC4, Scalar(0, 0, 0));
     Mat colorMap(overlap_height, overlap_width, CV_8UC3, Scalar(0, 0, 0));
+    Mat colorMap_all(overlap_height, overlap_width, CV_8UC3, Scalar(0, 0, 0));
     for (int y = 0; y < overlap_height; y++) {
         for (int x = 0; x < overlap_width; x++) {
-            if (overlap_region_tag[y][x] == 1)
+            if (overlap_region_tag[y][x] == 1) {
                 overlap_result.at<Vec4b>(y, x) = imgL_overlap.at<Vec4b>(y, x);
-            else if (overlap_region_tag[y][x] == 2)
+                colorMap_all.at<Vec3b>(y, x) = Vec3b(0, 255, 0);
+            }
+            else if (overlap_region_tag[y][x] == 2) {
                 overlap_result.at<Vec4b>(y, x) = imgR_overlap.at<Vec4b>(y, x);
+                colorMap_all.at<Vec3b>(y, x) = Vec3b(255, 0, 0);
+            }
             else if (overlap_region_tag[y][x] == 3) {
                 if (mask.at<uchar>(y, x) == 255) {
-                    overlap_result.at<Vec4b>(y, x) = imgL_overlap.at<Vec4b>(y, x);
+                    overlap_result.at<Vec4b>(y, x) = imgR_overlap.at<Vec4b>(y, x);
+                    colorMap_all.at<Vec3b>(y, x) = Vec3b(255, 0, 0);
                     colorMap.at<Vec3b>(y, x) = Vec3b(255, 0, 0);
                 }
                 else {
-                    overlap_result.at<Vec4b>(y, x) = imgR_overlap.at<Vec4b>(y, x);
+                    overlap_result.at<Vec4b>(y, x) = imgL_overlap.at<Vec4b>(y, x);
+                    colorMap_all.at<Vec3b>(y, x) = Vec3b(0, 255, 0);
                     colorMap.at<Vec3b>(y, x) = Vec3b(0, 255, 0);
                 };
             }
@@ -404,7 +421,8 @@ int main()
  
     //imwrite("./result/overlap_result.png", overlap_result);
     //imwrite("./result/overlap_result_seam.png", overlap_result_seam);
-    imwrite("./result/colorMap.png", colorMap);
+    imwrite("./result/colorMapOverlap.png", colorMap);
+    imwrite("./result/colorMapAll.png", colorMap_all);
 
     imwrite("./result/panorama.png",panorama);
     imwrite("./result/panorama_seam.png", panorama_seam);
