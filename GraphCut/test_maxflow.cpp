@@ -174,8 +174,8 @@ int main()
 {
     auto start = high_resolution_clock::now();
     //img1 img2 position
-    Point2f pos_img1(0, 5);
-    Point2f pos_img2(186, 0);
+    Point2f pos_img1(0, 1);
+    Point2f pos_img2(1, 0);
   
 
     //read img
