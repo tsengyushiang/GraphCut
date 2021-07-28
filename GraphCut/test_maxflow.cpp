@@ -103,6 +103,7 @@ void ImageStitching(Mat soureImg, Mat sinkImg,
     printf("Flow = %d\n", flow);
 
     // output Result label,image,(image with cut seam)
+    Mat nodeType(h, w, CV_8UC3, Scalar(0, 0, 0));
     Mat label(h, w, CV_8UC3, Scalar(0, 0, 0));
     Mat image(h, w, CV_8UC4, Scalar(0, 0, 0, 0));
     Mat imageWithSeam(h, w, CV_8UC4, Scalar(0, 0, 0, 0));
@@ -119,12 +120,24 @@ void ImageStitching(Mat soureImg, Mat sinkImg,
                     label.at < Vec3b >(i, j) = Vec3b(0, 255, 0);
                     image.at < Vec4b >(i, j) = sinkImg.at < Vec4b >(i, j);
                 }
+                if (isSourceConstrain(soureImg, sinkImg, i, j)) {
+                    nodeType.at < Vec3b >(i, j) = Vec3b(255, 0, 0);
+                }
+                else if (isSinkConstrain(soureImg, sinkImg, i, j)) {
+                    nodeType.at < Vec3b >(i, j) = Vec3b(0, 255, 0);
+                }
+                else {
+                    nodeType.at < Vec3b >(i, j) = Vec3b(255, 255, 255);
+                }
             }
+            
+
         }
     }
 
     imwrite("./result/label.png", label);
     imwrite("./result/stitchImage.png", image);
+    imwrite("./result/nodeType.png", nodeType);
 }
 
 void Example() {
