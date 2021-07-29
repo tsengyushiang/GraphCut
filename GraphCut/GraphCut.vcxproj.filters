@@ -24,10 +24,16 @@
     <ClCompile Include="lib\maxflow\graph.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="ImageStitching.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="maxflow.h">
       <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="ImageStitching.h">
+      <Filter>Source Files</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

@@ -153,11 +153,13 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="ImageStitching.cpp" />
     <ClCompile Include="lib\maxflow\graph.cpp" />
     <ClCompile Include="maxflow.cpp" />
     <ClCompile Include="test_maxflow.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="ImageStitching.h" />
     <ClInclude Include="maxflow.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
