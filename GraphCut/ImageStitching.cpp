@@ -91,8 +91,8 @@ StitchingResult ImageStitching::ImageStitching_kernel(Mat& soureImg, Mat& sinkIm
     std::printf("Flow = %d\n", flow);
 
     // output Result label,image,(image with cut seam)
-    Mat nodeType(h, w, CV_8UC3, Scalar(0, 0, 0));
-    Mat label(h, w, CV_8UC3, Scalar(0, 0, 0));
+    Mat nodeType(h, w, CV_8UC4, Scalar(0, 0, 0));
+    Mat label(h, w, CV_8UC4, Scalar(0, 0, 0));
     Mat image(h, w, CV_8UC4, Scalar(0, 0, 0, 0));
     for (int i = 0; i < h; i++) {
         for (int j = 0; j < w; j++) {
@@ -100,21 +100,21 @@ StitchingResult ImageStitching::ImageStitching_kernel(Mat& soureImg, Mat& sinkIm
             auto nodeMap = pixelIndex2nodeInex.find(index);
             if (nodeMap != pixelIndex2nodeInex.end()) {
                 if (G.what_segment(nodeMap->second) == Graph_III::SOURCE) {
-                    label.at < Vec3b >(i, j) = Vec3b(255, 0, 0);
+                    label.at < Vec4b >(i, j) = Vec4b(255, 0, 0, 255);
                     image.at < Vec4b >(i, j) = soureImg.at < Vec4b >(i, j);
                 }
                 else if (G.what_segment(nodeMap->second) == Graph_III::SINK) {
-                    label.at < Vec3b >(i, j) = Vec3b(0, 255, 0);
+                    label.at < Vec4b >(i, j) = Vec4b(0, 255, 0, 255);
                     image.at < Vec4b >(i, j) = sinkImg.at < Vec4b >(i, j);
                 }
                 if (isSourceConstrain(i, j)) {
-                    nodeType.at < Vec3b >(i, j) = Vec3b(255, 0, 0);
+                    nodeType.at < Vec4b >(i, j) = Vec4b(255, 0, 0, 255);
                 }
                 else if (isSinkConstrain(i, j)) {
-                    nodeType.at < Vec3b >(i, j) = Vec3b(0, 255, 0);
+                    nodeType.at < Vec4b >(i, j) = Vec4b(0, 255, 0, 255);
                 }
                 else {
-                    nodeType.at < Vec3b >(i, j) = Vec3b(255, 255, 255);
+                    nodeType.at < Vec4b >(i, j) = Vec4b(255, 255, 255, 255);
                 }
             }
 
@@ -122,14 +122,31 @@ StitchingResult ImageStitching::ImageStitching_kernel(Mat& soureImg, Mat& sinkIm
         }
     }
 
+    //
+    Mat allInone(h*2, w*2, CV_8UC4, Scalar(0, 0, 0));
+    cv::flip(image, image, -1);
+    cvtColor(image, image, CV_BGRA2RGBA);
+    cv::flip(label, label, -1);
+    cv::flip(soureImg, soureImg, -1);
+    cvtColor(soureImg, soureImg, CV_BGRA2RGBA);
+    cv::flip(sinkImg, sinkImg, -1);
+    cvtColor(sinkImg, sinkImg, CV_BGRA2RGBA);
+
+    // Copy images in correct position
+    soureImg.copyTo(allInone(Rect(0, 0, w, h)));
+    sinkImg.copyTo(allInone(Rect(w, 0, w, h)));
+    image.copyTo(allInone(Rect(w, h, w,h)));
+    label.copyTo(allInone(Rect(0, h, w, h)));
+
     return {
         nodeType,
         label,
-        image
+        image,
+        allInone
     };
 }
 
-void ImageStitching::RGBDiffenceStitching(stitchingArgs) {
+Mat ImageStitching::RGBDiffenceStitching(stitchingArgs) {
 
     auto isROI = [&soureImg, &sinkImg](int y, int x) {
         return soureImg.at<Vec4b>(y, x)[3] || sinkImg.at<Vec4b>(y, x)[3];
@@ -163,14 +180,16 @@ void ImageStitching::RGBDiffenceStitching(stitchingArgs) {
 
     auto result = ImageStitching_kernel(soureImg, sinkImg, isROI, isSourceConstrain, isSinkConstrain, colorCost);
 
-    cv::imwrite(OUTPUT_FOLDER("label.png"), result.label);
-    cv::imwrite(OUTPUT_FOLDER("stitchImage.png"), result.image);
-    cv::imwrite(OUTPUT_FOLDER("nodeType.png"), result.nodeType);
-
     auto stop = high_resolution_clock::now();
     auto duration = duration_cast<milliseconds>(stop - start);
     auto secs = std::chrono::duration_cast<std::chrono::duration<float>>(duration);
     cout << "\nExecution time: " << secs.count() << "s" << endl;
+
+    cv::imwrite(OUTPUT_FOLDER("label.png"), result.label);
+    cv::imwrite(OUTPUT_FOLDER("stitchImage.png"), result.image);
+    cv::imwrite(OUTPUT_FOLDER("nodeType.png"), result.nodeType);
+
+    return result.allInOne;
 }
 
 void ImageStitching::example() {

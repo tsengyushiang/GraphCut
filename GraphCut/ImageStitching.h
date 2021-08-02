@@ -20,6 +20,7 @@ typedef struct StitchingResult {
     Mat nodeType;
     Mat label;
     Mat image;
+    Mat allInOne;
 } StitchingResult;
 
 class ImageStitching {
@@ -32,5 +33,5 @@ public:
         std::function<bool(int y, int x)> isSinkConstrain,
         std::function<int(Point2d s, Point2d t)> edgeEnergy);
 
-    static void RGBDiffenceStitching(stitchingArgs);
+    static Mat RGBDiffenceStitching(stitchingArgs);
 };

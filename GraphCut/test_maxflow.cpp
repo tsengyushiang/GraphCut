@@ -3,6 +3,8 @@
 #include "ImageStitching.h"
 #include <opencv2/core/utils/filesystem.hpp>
 #include <filesystem>
+#include <opencv2/highgui/highgui.hpp>  // Video write
+
 namespace fs = std::filesystem;
 
 void loadImageFromFolder(std::string input, Mat& soureImg, Mat& sinkImg) {
@@ -46,22 +48,34 @@ void loadImageFromFolder(std::string input, Mat& soureImg, Mat& sinkImg) {
 void runBatchTest(
     std::string input,
     std::string output,
-    std::function<void(stitchingArgs)> stitchingAlgorithm
+    std::function<Mat(stitchingArgs)> stitchingAlgorithm,
+    bool exportVideo
 ) {    
     cv::utils::fs::createDirectory(output);
 
-    std::vector<std::string> dataFolders;
+    std::map<int,std::string> dataFolders;
     for (const auto& entry : fs::directory_iterator(input)) {
         std::string path = entry.path().string();
         if (std::filesystem::is_directory(path)) {
-            dataFolders.push_back(path);
+            dataFolders[stoi(entry.path().filename())] = path;
         }
     }
 
-    for (auto dataFoler : dataFolders) {
-        
+    VideoWriter* oVideoWriter = nullptr;
+    int w, h;
+    for (auto keyAndValue : dataFolders) {
+        auto dataFoler = keyAndValue.second;
+
         Mat sourceImg, sinkImg;
         loadImageFromFolder(dataFoler, sourceImg, sinkImg);
+
+        if (exportVideo && oVideoWriter == nullptr) {
+            w = sourceImg.size().width;
+            h = sourceImg.size().height;
+            Size frame_size(w * 2, h * 2);
+            oVideoWriter = new  VideoWriter("output.avi", VideoWriter::fourcc('M', 'J', 'P', 'G'),
+                30, frame_size, true);
+        }
 
         auto eraseSubStr = [](std::string& mainStr, const std::string& toErase)
         {
@@ -81,8 +95,21 @@ void runBatchTest(
             return cv::utils::fs::join(outputDataFolder, x);
         };
 
-        stitchingAlgorithm(sourceImg, sinkImg, OUTPUT_FOLDER);
+        Mat allIneOneResult = stitchingAlgorithm(sourceImg, sinkImg, OUTPUT_FOLDER);
+        if (oVideoWriter != nullptr) {
+            cv::putText(allIneOneResult, //target image
+                std::to_string(keyAndValue.first), //text
+                cv::Point(w,h), //top-left position
+                cv::FONT_HERSHEY_PLAIN,
+                15.0,
+                CV_RGB(118, 185, 0), //font color
+                2);
+            oVideoWriter->write(allIneOneResult);
+        }
     }   
+    if (oVideoWriter != nullptr) {
+        delete oVideoWriter;
+    }
 }
 
 void runSingleTest(
@@ -105,12 +132,12 @@ void main()
 {
     runBatchTest("./input", "./BatchTestResult", 
         [](stitchingArgs) {
-            ImageStitching::RGBDiffenceStitching(soureImg, sinkImg, OUTPUT_FOLDER);
-    });
+            return ImageStitching::RGBDiffenceStitching(soureImg, sinkImg, OUTPUT_FOLDER);
+    },true);
 
-    runSingleTest("./input", "./result",
-        [](stitchingArgs) {
-        ImageStitching::RGBDiffenceStitching(soureImg, sinkImg, OUTPUT_FOLDER);
-    });
+    //runSingleTest("./input", "./result",
+    //    [](stitchingArgs) {
+    //    ImageStitching::RGBDiffenceStitching(soureImg, sinkImg, OUTPUT_FOLDER);
+    //});
 }
 
