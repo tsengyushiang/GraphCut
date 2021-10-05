@@ -31,7 +31,9 @@ public:
         std::function<bool(int y, int x)> isROI,
         std::function<bool(int y, int x)> isSourceConstrain,
         std::function<bool(int y, int x)> isSinkConstrain,
-        std::function<int(Point2d s, Point2d t)> edgeEnergy);
+        std::function<int(Point2d s, Point2d t)> edgeEnergy,
+        std::function<void(Point2d p, int& soureEnergy, int& sinkEnergy)> dataTerm
+        );
 
     static Mat RGBDiffenceStitching(stitchingArgs);
 };

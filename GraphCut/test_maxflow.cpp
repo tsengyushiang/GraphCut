@@ -49,15 +49,15 @@ void runBatchTest(
     std::string input,
     std::string output,
     std::function<Mat(stitchingArgs)> stitchingAlgorithm,
-    bool exportVideo
+    bool exportVideo,int fps
 ) {    
     cv::utils::fs::createDirectory(output);
 
-    std::map<int,std::string> dataFolders;
+    std::map<std::string, std::string> dataFolders;
     for (const auto& entry : fs::directory_iterator(input)) {
         std::string path = entry.path().string();
         if (std::filesystem::is_directory(path)) {
-            dataFolders[stoi(entry.path().filename())] = path;
+            dataFolders[entry.path().filename().string()] = path;
         }
     }
 
@@ -73,8 +73,8 @@ void runBatchTest(
             w = sourceImg.size().width;
             h = sourceImg.size().height;
             Size frame_size(w * 2, h * 2);
-            oVideoWriter = new  VideoWriter("output.avi", VideoWriter::fourcc('M', 'J', 'P', 'G'),
-                30, frame_size, true);
+            oVideoWriter = new  VideoWriter(cv::utils::fs::join(output, "output.avi"), VideoWriter::fourcc('M', 'J', 'P', 'G'),
+                fps, frame_size, true);
         }
 
         auto eraseSubStr = [](std::string& mainStr, const std::string& toErase)
@@ -98,7 +98,7 @@ void runBatchTest(
         Mat allIneOneResult = stitchingAlgorithm(sourceImg, sinkImg, OUTPUT_FOLDER);
         if (oVideoWriter != nullptr) {
             cv::putText(allIneOneResult, //target image
-                std::to_string(keyAndValue.first), //text
+                keyAndValue.first, //text
                 cv::Point(w,h), //top-left position
                 cv::FONT_HERSHEY_PLAIN,
                 15.0,
@@ -130,10 +130,10 @@ void runSingleTest(
 
 void main()
 {
-    runBatchTest("./input", "./BatchTestResult", 
+    runBatchTest("./2021-10-05-11-56-39-warppingResult-fps30-duration3", "./BatchTestResult_2021-10-05-11-56-39-warppingResult-fps30-duration3", 
         [](stitchingArgs) {
             return ImageStitching::RGBDiffenceStitching(soureImg, sinkImg, OUTPUT_FOLDER);
-    },true);
+    },true,30);
 
     //runSingleTest("./input", "./result",
     //    [](stitchingArgs) {

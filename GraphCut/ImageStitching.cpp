@@ -4,7 +4,8 @@ StitchingResult ImageStitching::ImageStitching_kernel(Mat& soureImg, Mat& sinkIm
     std::function<bool(int y, int x)> isROI,
     std::function<bool(int y, int x)> isSourceConstrain,
     std::function<bool(int y, int x)> isSinkConstrain,
-    std::function<int(Point2d s, Point2d t)> edgeEnergy
+    std::function<int(Point2d s, Point2d t)> edgeEnergy,
+    std::function<void(Point2d p, int& soureEnergy,int& sinkEnergy)> dataterm
 ) {
 
     int w = soureImg.size().width;
@@ -63,6 +64,11 @@ StitchingResult ImageStitching::ImageStitching_kernel(Mat& soureImg, Mat& sinkIm
                 else if (isSinkConstrain(i, j)) {
                     G.add_tweights(nodeIndex, 0, INT_MAX);
                 }
+                else {
+                /*    int sourceWeight, sinkWeight = 0;
+                    dataterm(p_node, sourceWeight, sinkWeight);
+                    G.add_tweights(nodeIndex, sourceWeight, sinkWeight);*/
+                }
 
                 // left edge weight
                 int leftIndex = i * w + (j - 1);
@@ -100,21 +106,21 @@ StitchingResult ImageStitching::ImageStitching_kernel(Mat& soureImg, Mat& sinkIm
             auto nodeMap = pixelIndex2nodeInex.find(index);
             if (nodeMap != pixelIndex2nodeInex.end()) {
                 if (G.what_segment(nodeMap->second) == Graph_III::SOURCE) {
-                    label.at < Vec4b >(i, j) = Vec4b(255, 0, 0, 255);
+                    label.at < Vec4b >(i, j) = Vec4b(255, 0, 0, 127);
                     image.at < Vec4b >(i, j) = soureImg.at < Vec4b >(i, j);
                 }
                 else if (G.what_segment(nodeMap->second) == Graph_III::SINK) {
-                    label.at < Vec4b >(i, j) = Vec4b(0, 255, 0, 255);
+                    label.at < Vec4b >(i, j) = Vec4b(0, 255, 0, 127);
                     image.at < Vec4b >(i, j) = sinkImg.at < Vec4b >(i, j);
                 }
                 if (isSourceConstrain(i, j)) {
-                    nodeType.at < Vec4b >(i, j) = Vec4b(255, 0, 0, 255);
+                    nodeType.at < Vec4b >(i, j) = Vec4b(255, 0, 0, 127);
                 }
                 else if (isSinkConstrain(i, j)) {
-                    nodeType.at < Vec4b >(i, j) = Vec4b(0, 255, 0, 255);
+                    nodeType.at < Vec4b >(i, j) = Vec4b(0, 255, 0, 127);
                 }
                 else {
-                    nodeType.at < Vec4b >(i, j) = Vec4b(255, 255, 255, 255);
+                    nodeType.at < Vec4b >(i, j) = Vec4b(0, 0, 255, 127);
                 }
             }
 
@@ -123,14 +129,29 @@ StitchingResult ImageStitching::ImageStitching_kernel(Mat& soureImg, Mat& sinkIm
     }
 
     //
+    cv::flip(nodeType, nodeType, -1);
     Mat allInone(h*2, w*2, CV_8UC4, Scalar(0, 0, 0));
     cv::flip(image, image, -1);
-    cvtColor(image, image, CV_BGRA2RGBA);
     cv::flip(label, label, -1);
     cv::flip(soureImg, soureImg, -1);
-    cvtColor(soureImg, soureImg, CV_BGRA2RGBA);
     cv::flip(sinkImg, sinkImg, -1);
-    cvtColor(sinkImg, sinkImg, CV_BGRA2RGBA);
+
+    for (int i = 0; i < h; i++) {
+        for (int j = 0; j < w; j++) {
+            int index = i * w + j;
+
+            Vec4b bakcgounrd= Vec4b(129, 245, 66, 255);
+            if (image.at < Vec4b >(i, j)[3]==0) {
+                image.at < Vec4b >(i, j) = bakcgounrd;
+            }
+            if (soureImg.at < Vec4b >(i, j)[3] == 0) {
+                soureImg.at < Vec4b >(i, j) = bakcgounrd;
+            }
+            if (sinkImg.at < Vec4b >(i, j)[3] == 0) {
+                sinkImg.at < Vec4b >(i, j) = bakcgounrd;
+            }
+        }
+    }
 
     // Copy images in correct position
     soureImg.copyTo(allInone(Rect(0, 0, w, h)));
@@ -176,9 +197,18 @@ Mat ImageStitching::RGBDiffenceStitching(stitchingArgs) {
         return energy;
     };
 
+    auto dataterm = [&soureImg, &sinkImg](Point2d s, int& sourceWeight,int& sinkWeight) {
+
+        Vec4b& colorSource = soureImg.at<Vec4b>(s.x, s.y);
+        Vec4b& colorSink = sinkImg.at<Vec4b>(s.x, s.y);
+
+        sourceWeight = -colorSource[0]*0.1;
+        sinkWeight = -colorSink[0]*0.1;
+    };
+
     auto start = high_resolution_clock::now();
 
-    auto result = ImageStitching_kernel(soureImg, sinkImg, isROI, isSourceConstrain, isSinkConstrain, colorCost);
+    auto result = ImageStitching_kernel(soureImg, sinkImg, isROI, isSourceConstrain, isSinkConstrain, colorCost, dataterm);
 
     auto stop = high_resolution_clock::now();
     auto duration = duration_cast<milliseconds>(stop - start);
@@ -186,8 +216,12 @@ Mat ImageStitching::RGBDiffenceStitching(stitchingArgs) {
     cout << "\nExecution time: " << secs.count() << "s" << endl;
 
     cv::imwrite(OUTPUT_FOLDER("label.png"), result.label);
+    cv::imwrite(OUTPUT_FOLDER("sink.png"), sinkImg);
+    cv::imwrite(OUTPUT_FOLDER("source.png"), soureImg);
     cv::imwrite(OUTPUT_FOLDER("stitchImage.png"), result.image);
     cv::imwrite(OUTPUT_FOLDER("nodeType.png"), result.nodeType);
+    cv::imwrite(OUTPUT_FOLDER("allInOne.png"), result.allInOne);
+    cvtColor(result.allInOne, result.allInOne, CV_BGRA2RGBA);
 
     return result.allInOne;
 }
